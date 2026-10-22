@@ -8,22 +8,22 @@ on:
         required: true
         default: 'alpha'
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   tag:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
 
-      - name: Add dist-tags via npm provenance / OIDC
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          node scripts/tag.js "${{ github.event.inputs.dist_tag }}"
+      - name: Authenticate with npm via GitHub OIDC
+        run: node scripts/oidc-auth.js
+
+      - name: Manage dist-tags
+        run: node scripts/tag.js "${{ github.event.inputs.dist_tag }}"
