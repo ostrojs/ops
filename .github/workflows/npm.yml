@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate:
+  publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +16,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
 
-      - name: Validate OIDC on npmjs.com
+      - run: npm install -g npm@latest
+
+      - name: Download existing auth build and publish to alpha tag with provenance
         run: |
-          npm dist-tag add @ostro/auth@2.0.0-alpha.2 alpha
+          mkdir pkg && cd pkg
+          curl -sL $(npm view @ostro/auth@2.0.0-alpha.2 dist.tarball) | tar -xz --strip-components=1
+          npm publish --access public --tag alpha --provenance
