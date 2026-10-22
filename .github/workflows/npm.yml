@@ -1,33 +1,46 @@
-name: Validate Trusted Publisher
+name: NPM Release & Tagging
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Action to perform (publish | tag)"
+        required: true
+        default: "tag"
+        type: choice
+        options:
+          - tag
+          - publish
+      packages:
+        description: "Comma-separated package names (or empty for all)"
+        required: false
+        default: ""
+      tag:
+        description: "NPM dist-tag to set"
+        required: true
+        default: "alpha"
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  publish:
+  run:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: "https://registry.npmjs.org"
 
       - run: npm install -g npm@latest
 
-      - name: Match repository in package.json and publish with provenance
+      - name: Execute NPM Action
+        env:
+          ACTION: ${{ github.event.inputs.action }}
+          PACKAGES_INPUT: ${{ github.event.inputs.packages }}
+          TARGET_TAG: ${{ github.event.inputs.tag }}
         run: |
-          mkdir pkg && cd pkg
-          curl -sL $(npm view @ostro/auth@2.0.0-alpha.2 dist.tarball) | tar -xz --strip-components=1
-          node -e '
-            const fs = require("fs");
-            const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
-            p.repository = { type: "git", url: "git+https://github.com/ostrojs/ops.git" };
-            p.version = "2.0.0-alpha.3";
-            fs.writeFileSync("package.json", JSON.stringify(p, null, 2));
-          '
-          npm publish --access public --tag alpha --provenance
+          node scripts/manage.js
