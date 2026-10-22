@@ -22,8 +22,5 @@ jobs:
         with:
           node-version: 22
 
-      - name: Authenticate with npm via GitHub OIDC
-        run: node scripts/oidc-auth.js
-
-      - name: Manage dist-tags
-        run: node scripts/tag.js "${{ github.event.inputs.dist_tag }}"
+      - name: Retag packages via npm publish provenance (OIDC)
+        run: node scripts/publish-tags.js "${{ github.event.inputs.dist_tag }}"
