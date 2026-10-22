@@ -42,33 +42,45 @@ for (const pkg of targetPackages) {
     console.log(`\n========================================`);
     console.log(`Processing ${pkg}...`);
 
-    const viewRaw = execSync(`npm view ${pkg} versions dist-tags --json`, { encoding: 'utf8' });
-    const viewData = JSON.parse(viewRaw);
+    let versionsRaw = '';
+    let tagsRaw = '';
 
-    const versions = Array.isArray(viewData.versions)
-      ? viewData.versions
-      : [viewData.versions].filter(Boolean);
-    const distTags = viewData['dist-tags'] || {};
+    try {
+      versionsRaw = execSync(`npm view ${pkg} versions --json --registry=https://registry.npmjs.org`, { encoding: 'utf8' }).trim();
+    } catch (e) {
+      console.error(`Could not fetch versions for ${pkg}:`, e.message);
+      continue;
+    }
+
+    try {
+      tagsRaw = execSync(`npm view ${pkg} dist-tags --json --registry=https://registry.npmjs.org`, { encoding: 'utf8' }).trim();
+    } catch (e) {
+      console.warn(`Could not fetch dist-tags for ${pkg}:`, e.message);
+    }
+
+    const versions = versionsRaw ? JSON.parse(versionsRaw) : [];
+    const distTags = tagsRaw ? JSON.parse(tagsRaw) : {};
+    const versionList = Array.isArray(versions) ? versions : [versions].filter(Boolean);
 
     console.log(`Current dist-tags:`, JSON.stringify(distTags));
 
-    // Find latest alpha release
-    const alphaVersions = versions.filter((v) => v.includes('-alpha'));
+    // Filter 2.* alpha versions
+    const alphaVersions = versionList.filter((v) => typeof v === 'string' && v.startsWith('2.') && v.includes('-alpha'));
     if (!alphaVersions.length) {
-      console.log(`No alpha version found for ${pkg}, skipping.`);
+      console.log(`No 2.*-alpha version found for ${pkg}, skipping.`);
       continue;
     }
 
     const latestAlpha = alphaVersions[alphaVersions.length - 1];
-    console.log(`Latest alpha version: ${latestAlpha}`);
+    console.log(`Target alpha version: ${latestAlpha}`);
 
     if (distTags[targetTag] === latestAlpha) {
-      console.log(`Tag "${targetTag}" is already at ${latestAlpha}.`);
+      console.log(`Tag "${targetTag}" is already pointing to ${latestAlpha}.`);
       continue;
     }
 
-    console.log(`Setting dist-tag: npm dist-tag add ${pkg}@${latestAlpha} ${targetTag}`);
-    execSync(`npm dist-tag add ${pkg}@${latestAlpha} ${targetTag}`, {
+    console.log(`Running: npm dist-tag add ${pkg}@${latestAlpha} ${targetTag} --registry=https://registry.npmjs.org`);
+    execSync(`npm dist-tag add ${pkg}@${latestAlpha} ${targetTag} --registry=https://registry.npmjs.org`, {
       stdio: 'inherit',
     });
     console.log(`Successfully tagged ${pkg}@${latestAlpha} as ${targetTag}`);
