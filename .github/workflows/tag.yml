@@ -1,0 +1,29 @@
+name: Manage NPM Dist Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: 'Tag name (e.g. alpha)'
+        required: true
+        default: 'alpha'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Add dist-tags via npm provenance / OIDC
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node scripts/tag.js "${{ github.event.inputs.dist_tag }}"
