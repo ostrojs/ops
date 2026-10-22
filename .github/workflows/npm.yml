@@ -19,8 +19,14 @@ jobs:
 
       - run: npm install -g npm@latest
 
-      - name: Download existing auth build and publish to alpha tag with provenance
+      - name: Match repository in package.json and publish with provenance
         run: |
           mkdir pkg && cd pkg
           curl -sL $(npm view @ostro/auth@2.0.0-alpha.2 dist.tarball) | tar -xz --strip-components=1
+          node -e '
+            const fs = require("fs");
+            const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            p.repository = { type: "git", url: "git+https://github.com/ostrojs/ops.git" };
+            fs.writeFileSync("package.json", JSON.stringify(p, null, 2));
+          '
           npm publish --access public --tag alpha --provenance
